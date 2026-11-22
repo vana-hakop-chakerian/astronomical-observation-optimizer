@@ -30,8 +30,9 @@ Given an observer's location and an object's coordinates, this project finds **w
 ├── root_finding.py       # Bisection, Newton's method, Secant method
 ├── observability.py      # Minimum altitude, astronomical night, observable intervals
 ├── tests/
-│   ├── test_observability.py
-│   └── test_root_finding.py
+│   ├── test_methods.py         
+│   ├── test_observability.py    
+│   └── test_root_finding.py     
 └── README.md
 ```
 
