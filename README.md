@@ -1,55 +1,106 @@
-# Optimizing the Observation Time of an Astronomical Object
 
-Numerical Analysis course project. This repository contains the **Optimal Observation Time**
-component (optimization + numerical integration), status: **Second weekly progress**.
+# Astronomical Observation Optimizer
 
-## Problem
-Given an object (declination δ), an observatory (latitude φ) and a fixed exposure duration T,
-choose the exposure **start time** t_s that maximizes the total observation quality.
+Optimizing the observation time of an astronomical object using numerical methods.
 
-## Mathematical model
-| Quantity | Formula |
-|---|---|
-| Hour angle | H(t) = 15° · (t − t_transit), t in hours |
-| Altitude | sin h = sin φ sin δ + cos φ cos δ cos H |
-| Airmass (Kasten–Young 1989) | X(h) = 1 / (sin h + 0.50572 (h + 6.07995)^−1.6364) |
-| Quality | Q(h) = 10^(−0.4 k (X(h) − 1)) if h ≥ h_min, else 0 |
-| **Objective** | **J(t_s) = ∫ from t_s to t_s+T of Q(h(t)) dt** |
-| Optimum | t_s* = argmax J(t_s) |
+Given an observer's location and an object's coordinates, this project finds **when the object can be observed** (minimum altitude and astronomical night) and **the best time to start an exposure** (maximum integrated observation quality).
 
-Assumptions: Q = 1 at zenith; extinction coefficient k = 0.20 mag/airmass; minimum usable
-altitude h_min = 10°; solar/sidereal time difference, refraction and moon/weather neglected;
-J is unimodal over the search interval.
+## Team
+
+| Member | Part | Methods |
+|---|---|---|
+| Vana Hakop Chakerian | Optimal observation time | Numerical integration (Trapezoidal Rule, Simpson's Rule), optimization (Golden-Section Search) |
+| Angelina Nersesyan | Observable time interval | Root finding (Bisection, Newton, Secant), observability constraints |
+
+## How the Two Parts Fit Together
+
+1. **Observable window (Angelina):** Root-finding methods are used to solve the altitude constraint `altitude(t) - h_min = 0` and determine when the object crosses the minimum required altitude. Combined with the astronomical night condition (the Sun is below -18 degrees), this determines the time interval during which the object is observable.
+
+2. **Optimal observation time (Vana):** Within the observable interval, numerical integration calculates the total observation quality over an exposure duration `T`. Golden-Section Search then finds the exposure start time `t_s` that maximizes the integrated quality `J(t_s)`.
+
+## Project Structure
+
+```text
+.
+├── astronomy.py          # Altitude of an object (latitude, declination, hour angle)
+├── airmass.py            # Kasten-Young airmass formula
+├── integration.py        # Composite Trapezoidal Rule and Composite Simpson's Rule
+├── optimization.py       # Golden-Section Search
+├── objective.py          # Observation quality Q(h) and objective function J(t_s)
+├── root_finding.py       # Bisection, Newton's method, Secant method
+├── observability.py      # Minimum altitude, astronomical night, observable intervals
+├── tests/
+│   ├── test_observability.py
+│   └── test_root_finding.py
+└── README.md
+```
 
 ## Modules
-| File | Content |
-|---|---|
-| `astronomy.py` | hour angle and altitude of an object |
-| `airmass.py` | airmass models and observation-quality function |
-| `integration.py` | composite trapezoidal and Simpson rules (from scratch, with input validation) |
-| `optimization.py` | golden-section search (maximization, from scratch) |
-| `objective.py` | J(t_s), integration method selectable (`"trapezoidal"` / `"simpson"`) |
-| `tests/test_methods.py` | tests with known integrals / known maximum |
-| `main_demo.py` | small end-to-end demo |
 
-## Usage
+### Optimal Observation Time (Vana)
+
+- **`astronomy.py`**: Calculates the object's altitude using the observer's latitude, the object's declination, and its hour angle.
+- **`airmass.py`**: Implements the Kasten-Young airmass formula `X(h)`.
+- **`objective.py`**: Defines the observation quality function `Q(h) = 10^(-0.4 * k * (X(h) - 1))`, where `k` is the extinction coefficient, and the objective function `J(t_s)`, which integrates `Q(h(t))` over the exposure interval from `t_s` to `t_s + T`.
+- **`integration.py`**: Implements the Composite Trapezoidal Rule and Composite Simpson's Rule, including input validation.
+- **`optimization.py`**: Implements Golden-Section Search with a stopping tolerance to estimate the optimal exposure start time and its function value.
+
+### Observable Time Interval (Angelina)
+
+- **`root_finding.py`**:
+  - `bisection(f, a, b, tol, max_iter)`
+  - `newton(f, df, x0, tol, max_iter)`
+  - `secant(f, x0, x1, tol, max_iter)`
+
+  Each method returns `(root, iterations)` and validates its inputs.
+
+- **`observability.py`**:
+  - `is_astronomical_night(sun_altitude_deg)`: Checks whether the Sun is below -18 degrees.
+  - `altitude_constraint(altitude_fn, h_min)`: Defines the altitude constraint function `altitude(t) - h_min`.
+  - `find_boundary_crossings(altitude_fn, h_min, t_start, t_end)`: Finds the times when the object crosses the minimum altitude.
+  - `observable_intervals(altitude_fn, h_min, t_start, t_end)`: Determines intervals during which the object's altitude is at least `h_min`.
+
+## Getting Started
+
+Clone the repository:
+
+```bash
+git clone https://github.com/vana-hakop-chakerian/astronomical-observation-optimizer.git
+cd astronomical-observation-optimizer
+```
+
+Install the required dependencies:
+
 ```bash
 pip install -r requirements.txt
+```
+
+## Running the Tests
+
+Run the test suite using:
+
+```bash
 python -m pytest -v
-python main_demo.py
 ```
 
-```python
-from objective import make_objective
-from optimization import golden_section_search
+## Current Status
 
-J = make_objective(duration=2.0, latitude_deg=40, declination_deg=20, method="simpson", n=100)
-t_opt, J_opt = golden_section_search(J, -6, 4, tol=1e-6)
-```
+| Component | Status |
+|---|---|
+| Altitude model, airmass, quality function, objective | Done, tested |
+| Trapezoidal and Simpson integration | Done, tested |
+| Golden-Section Search | Done, tested |
+| Bisection, Newton, Secant | Done, tested |
+| Observability constraints and intervals | Done, tested |
+| Final experiment with a real target and observatory | Planned |
+| Error comparison, convergence comparison, plots and tables | Planned |
+| Final report | Planned |
 
-## Current status
-- [x] Mathematical model and objective function
-- [x] Composite trapezoidal and Simpson rules + tests (sin, x³, exp)
-- [x] Golden-section search + tests
-- [x] Objective function linking integration and optimization
-- [ ] Final astronomical experiment, error comparison, plots, tables (third reporting period)
+## Planned Work
+
+- Run the final experiment with a real astronomical target and observatory.
+- Compare the errors of the Trapezoidal and Simpson's Rules for different numbers of subintervals.
+- Compare the convergence and accuracy of Bisection, Newton, and Secant methods.
+- Calculate boundary crossing times and analyze the observable intervals.
+- Apply Golden-Section Search to find optimal exposure start times under different conditions.
+- Generate plots and tables and prepare the final report.
